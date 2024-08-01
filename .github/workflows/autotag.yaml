@@ -1,0 +1,25 @@
+on:
+  push:
+    branches:
+    - production
+    - qa
+    - development
+
+
+
+jobs:
+  tag-job:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Create new tag for version
+      run: |
+        BRANCH="$(git branch --show-current)"
+        SHORTBRANCH="$( echo "$BRANCH" | sed -e 's/production/prod/' -e 's/development/dev/')"
+        MAXTAG="$(git tag |grep -E -- "-${SHORTBRANCH}\$"|tr -dc '0-9\n'|sort -n|tail -1|grep . || echo 0)"
+        NEWNAME=v$(( MAXTAG + 1 ))-$SHORTBRANCH
+        git tag "$NEWNAME"
+        git push origin "$NEWNAME"
