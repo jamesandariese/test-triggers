@@ -1,0 +1,42 @@
+name: Automatic tagging, fs-next-app style
+
+on:
+  push:
+    branches:
+    - production
+    - qa
+    - development
+
+env:
+  # BRANCH_REWRITES:
+  #   sed syntax.
+  #   empty is fine and results in no branches rewritten.
+  #   if the variable is missing, it's the same as empty.
+  BRANCH_REWRITES: |
+    s/development/dev/
+    s/production/prod/
+
+jobs:
+  tag-job:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        # don't bother with fetch-tags.  future self, this won't help you.
+        # the problem is that fetch-tags doesn't add --tags, it just causes --no-tags to
+        # not be added.  this isn't sufficient to actually pull any tags other than the
+        # ones related to the commits being fetched.  so just fetch-depth 0 or git fetch
+        # yourself.
+        #  fetch-tags: true
+        fetch-depth: 0
+    - name: Create new tag for version
+      run: |
+        BRANCH="$(git branch --show-current)"
+        SHORTBRANCH="$( echo "$BRANCH" | sed -e "${BRANCH_REWRITES}" )"
+        MAXTAG="$(git tag |grep -E -- "-${SHORTBRANCH}\$"|tr -dc '0-9\n'|sort -n|tail -1|grep . || echo 0)"
+        NEWNAME=v$(( MAXTAG + 1 ))-$SHORTBRANCH
+        git tag "$NEWNAME"
+        git push origin "$NEWNAME"
